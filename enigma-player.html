@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SF Game Zone · Play</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{
+  --bg:#08060f;--ink:#f4f1ff;--muted:#9a92c0;--faint:#6a6394;
+  --glass:rgba(28,22,52,0.55);--stroke:rgba(255,255,255,0.18);--stroke-strong:rgba(255,255,255,0.4);
+  --violet:#333333;--magenta:#FF5D6C;--cyan:#cfd2d6;--gold:#ffd36b;--good:#7BD93A;--brand:#333333;
+  --grad:linear-gradient(120deg,#3d3d3d 0%,#2b2b2b 100%);
+  --radius:22px;--shadow:0 30px 80px -20px rgba(0,0,0,0.7);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden}
+.bg-layer{position:fixed;inset:0;z-index:-3;background:radial-gradient(1100px 700px at 80% 10%,rgba(255,255,255,.2),transparent 60%),radial-gradient(900px 800px at 10% 90%,rgba(255,255,255,.16),transparent 60%),linear-gradient(160deg,#0a0716,#0c0820 50%,#080611)}
+.bg-video{position:fixed;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:center}
+.bg-scrim{position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.62))}
+.shell{max-width:620px;margin:0 auto;padding:32px 20px 70px;min-height:100vh;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:12px;justify-content:center}
+.orb{width:38px;height:38px;border-radius:50%;position:relative;background:conic-gradient(from 0deg,#88CB00,#B6E62E,#38D9B0,#88CB00);box-shadow:0 0 28px rgba(255,255,255,.6);animation:spin 8s linear infinite}
+.orb::after{content:"";position:absolute;inset:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.9),rgba(20,16,40,.9) 70%)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sf-logo{display:inline-flex;align-items:center;height:32px;color:var(--ink)}
+.sf-logo svg{height:100%;width:auto;display:block}
+.role-tag{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#cfd2d6;border:1px solid var(--stroke-strong);padding:3px 10px;border-radius:30px}
+.tag{text-align:center;color:var(--muted);font-size:12.5px;letter-spacing:.15em;text-transform:uppercase;margin:8px 0 26px}
+.center-stack{flex:1;display:flex;flex-direction:column;justify-content:center}
+.glass{background:var(--glass);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border:1px solid var(--stroke);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:26px}
+button{font-family:inherit;cursor:pointer;border:none;color:inherit}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:14px 24px;border-radius:14px;font-weight:600;font-size:15px;transition:transform .18s,box-shadow .25s,opacity .2s}
+.btn:active{transform:translateY(1px) scale(.99)}
+.btn-primary{background:var(--grad);color:#fff;box-shadow:0 12px 30px -10px rgba(0,0,0,.7)}
+.btn-primary:hover{box-shadow:0 16px 44px -10px rgba(0,0,0,.8);transform:translateY(-1px)}
+.btn-lg{padding:16px 30px;font-size:16px;width:100%}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.field{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+label.lbl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+input{font-family:inherit;font-size:16px;color:var(--ink);background:rgba(10,8,22,.7);border:1px solid var(--stroke);border-radius:13px;padding:14px 15px;width:100%;outline:none;transition:border .2s,box-shadow .2s}
+input:focus{border-color:var(--stroke-strong);box-shadow:0 0 0 3px rgba(255,255,255,.18)}
+.section-title{font-family:'Space Grotesk';font-weight:600;font-size:18px;margin-bottom:8px;display:flex;align-items:center;gap:9px}
+.sub{color:var(--muted);font-size:13.5px;line-height:1.5;margin-bottom:20px}
+.conn-line{font-size:12.5px;color:var(--muted);text-align:center;margin-top:14px}
+.status-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold);margin-right:7px;vertical-align:middle}
+.status-dot.live{background:var(--good);box-shadow:0 0 10px var(--good)}
+.status-dot.err{background:var(--magenta);box-shadow:0 0 10px var(--magenta)}
+/* waiting */
+.waiting{text-align:center;padding:14px 0}
+.pulse-orb{width:74px;height:74px;border-radius:50%;margin:6px auto 18px;background:conic-gradient(from 0deg,#cfd2d6,#ffffff,#9aa0a6,#cfd2d6);box-shadow:0 0 40px rgba(255,255,255,.6);animation:spin 6s linear infinite;position:relative}
+.pulse-orb::after{content:"";position:absolute;inset:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.9),rgba(20,16,40,.95) 70%)}
+.you-pill{display:inline-flex;align-items:center;gap:9px;padding:8px 15px;border-radius:30px;border:1px solid var(--stroke);background:rgba(255,255,255,.04);font-weight:600;font-size:14px;margin-top:6px}
+.roster{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:18px}
+.rchip{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:30px;background:rgba(255,255,255,.04);border:1px solid var(--stroke);font-size:13px}
+.avatar{width:34px;height:34px;border-radius:10px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Space Grotesk';color:#0c0820;font-size:13px}
+.av-sm{width:22px;height:22px;border-radius:7px;font-size:10px}
+/* game */
+.progress-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:7px;letter-spacing:.05em}
+.progress{height:7px;border-radius:6px;background:rgba(255,255,255,.07);overflow:hidden;margin-bottom:20px}
+.progress span{display:block;height:100%;background:linear-gradient(90deg,#8a8f96,#e9ebee);transition:width .5s cubic-bezier(.4,0,.2,1)}
+.chips{display:flex;gap:8px;margin-bottom:16px}
+.chip{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:6px 12px;border-radius:30px;border:1px solid var(--stroke);color:var(--muted)}
+.chip.cat{color:var(--cyan);border-color:rgba(255,255,255,.3)}
+.chip.diff-Easy{color:var(--good);border-color:rgba(84,240,192,.3)}
+.chip.diff-Medium{color:var(--gold);border-color:rgba(255,211,107,.3)}
+.chip.diff-Hard{color:var(--magenta);border-color:rgba(255,255,255,.35)}
+.ai-readout{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:18px}
+.ai-dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+.riddle-q{font-family:'Space Grotesk';font-weight:500;font-size:26px;line-height:1.42;min-height:90px;animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.seal{margin-top:24px;border-top:1px solid var(--stroke);padding-top:22px}
+.sealed-box{display:flex;align-items:center;gap:13px;padding:18px;border:1px dashed var(--stroke);border-radius:14px;background:rgba(255,255,255,.03);color:var(--muted)}
+.sealed-box .lockico{font-size:22px}
+.sealed-box .shimmer{font-weight:600;font-size:15px;background:linear-gradient(90deg,var(--muted),var(--ink),var(--muted));background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shim 2.4s linear infinite}
+@keyframes shim{to{background-position:-200% 0}}
+.answer-reveal{animation:revealAnim .6s cubic-bezier(.2,.8,.2,1)}
+@keyframes revealAnim{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+.answer-label{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--good);margin-bottom:8px}
+.answer-text{font-family:'Space Grotesk';font-weight:700;font-size:32px;background:linear-gradient(120deg,#ffffff,#cfd2d6);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1.2}
+.live-score{margin-top:18px}
+.live-score .row{display:flex;align-items:center;gap:11px;padding:9px 4px;border-bottom:1px solid rgba(255,255,255,.05);font-size:14px}
+.live-score .row:last-child{border:none}
+.live-score .row.me{background:rgba(255,255,255,.1);border-radius:8px;padding-left:8px;padding-right:8px}
+.live-score .pts{margin-left:auto;font-family:'Space Grotesk';font-weight:700;color:var(--gold)}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:14px;margin:24px 0 6px}
+.stand{display:flex;flex-direction:column;align-items:center;gap:9px;animation:fadeUp .6s ease backwards}
+.stand .av{width:52px;height:52px;border-radius:15px;font-size:20px}
+.bar{width:76px;border-radius:12px 12px 0 0;display:flex;justify-content:center;padding-top:10px;font-family:'Space Grotesk';font-weight:700;font-size:19px;color:#0c0820}
+.bar.b1{height:126px;background:linear-gradient(180deg,#ffd36b,#d9a534)}
+.bar.b2{height:94px;background:linear-gradient(180deg,#d7d2ef,#9a92c0)}
+.bar.b3{height:70px;background:linear-gradient(180deg,#e0a06b,#b9763f)}
+.crown{font-size:22px;animation:bob 2s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.rest-list{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+.rest-row{display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--stroke)}
+.rest-row .pts{margin-left:auto;font-family:'Space Grotesk';font-weight:700;color:var(--gold)}
+.banner{text-align:center;padding:30px 16px;color:var(--muted)}
+.answer-entry .type-row{display:flex;gap:10px}
+.answer-entry .type-row input{flex:1}
+.guess-msg{font-size:13.5px;margin-top:10px;min-height:18px;font-weight:600}
+.guess-msg.ok{color:var(--good)}
+.guess-msg.no{color:var(--magenta)}
+.winner-banner{text-align:center;margin-bottom:14px;animation:fadeUp .6s ease}
+.winner-banner .lead{font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
+.winner-name{font-family:'Space Grotesk';font-weight:700;font-size:clamp(32px,9vw,52px);line-height:1.05;margin:8px 0;background:linear-gradient(120deg,#ffe48f,#ffd36b,#fff3c9);-webkit-background-clip:text;background-clip:text;color:transparent;word-break:break-word}
+.winner-sub{color:var(--muted);font-size:14px}
+.spec-banner{background:rgba(255,211,107,.12);border:1px solid rgba(255,211,107,.32);color:var(--gold);border-radius:13px;padding:12px 15px;font-size:13.5px;font-weight:500;margin-bottom:16px;line-height:1.45}
+.mini-badge{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.08);color:var(--muted);border:1px solid var(--stroke)}
+.hidden{display:none!important}
+.fade-in{animation:fadeUp .5s ease}
+.confetti{position:fixed;width:10px;height:14px;top:-20px;z-index:50;border-radius:2px;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="bg-layer"></div>
+<video class="bg-video" autoplay muted loop playsinline preload="auto" poster="https://d8j0ntlcm91z4.cloudfront.net/user_3F4QnZAkMCTtzJdw300ngg8NiLh/hf_20260616_074633_149b6d4f-540b-4449-970f-7fc6f775e650.png">
+  <source src="sfgz-bg.mp4" type="video/mp4">
+  <source src="sfgz-bg.webm" type="video/webm">
+</video>
+<div class="bg-scrim"></div>
+<div class="shell">
+  <div class="brand"><span class="sf-logo"><svg viewBox="0 0 947 198" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M118.08 150.133C109.206 150.133 101.936 148.103 96.2718 144.044C90.7016 139.889 87.5861 134.272 86.9252 127.191H97.1215C97.5935 131.534 99.6233 135.075 103.211 137.812C106.893 140.456 111.802 141.778 117.939 141.778C123.32 141.778 127.521 140.503 130.542 137.954C133.658 135.405 135.216 132.242 135.216 128.466C135.216 125.822 134.366 123.651 132.667 121.952C130.967 120.252 128.796 118.931 126.152 117.986C123.603 116.948 120.11 115.862 115.673 114.729C109.914 113.219 105.241 111.708 101.653 110.198C98.0655 108.687 94.9972 106.469 92.4482 103.542C89.9935 100.521 88.7662 96.5083 88.7662 91.5046C88.7662 87.7282 89.8991 84.2351 92.165 81.0252C94.4308 77.8153 97.6407 75.2662 101.795 73.378C105.949 71.4898 110.669 70.5457 115.956 70.5457C124.264 70.5457 130.967 72.6699 136.065 76.9184C141.163 81.0724 143.901 86.8314 144.279 94.1953H134.366C134.083 89.6636 132.289 86.0289 128.985 83.291C125.775 80.4587 121.337 79.0426 115.673 79.0426C110.669 79.0426 106.61 80.2227 103.494 82.5829C100.379 84.9432 98.8208 87.8699 98.8208 91.363C98.8208 94.3841 99.7177 96.886 101.511 98.8686C103.4 100.757 105.713 102.267 108.451 103.4C111.188 104.439 114.87 105.619 119.497 106.941C125.067 108.451 129.504 109.914 132.808 111.331C136.113 112.747 138.945 114.824 141.305 117.562C143.665 120.3 144.893 123.934 144.987 128.466C144.987 132.62 143.854 136.349 141.588 139.653C139.322 142.863 136.16 145.412 132.1 147.301C128.041 149.189 123.367 150.133 118.08 150.133ZM197.493 150.133C190.223 150.133 183.662 148.528 177.808 145.318C172.049 142.014 167.471 137.388 164.072 131.44C160.767 125.398 159.115 118.364 159.115 110.339C159.115 102.315 160.815 95.3282 164.213 89.3804C167.612 83.3382 172.238 78.7121 178.092 75.5022C183.945 72.1979 190.506 70.5457 197.776 70.5457C205.045 70.5457 211.607 72.1979 217.46 75.5022C223.408 78.7121 228.034 83.3382 231.339 89.3804C234.737 95.3282 236.437 102.315 236.437 110.339C236.437 118.27 234.737 125.256 231.339 131.298C227.94 137.34 223.267 142.014 217.319 145.318C211.371 148.528 204.762 150.133 197.493 150.133ZM197.493 141.494C202.591 141.494 207.311 140.362 211.654 138.096C215.997 135.735 219.49 132.242 222.134 127.616C224.871 122.896 226.24 117.137 226.24 110.339C226.24 103.542 224.919 97.8301 222.275 93.204C219.632 88.4835 216.139 84.9904 211.796 82.7245C207.453 80.3643 202.732 79.1842 197.634 79.1842C192.536 79.1842 187.816 80.3643 183.473 82.7245C179.13 84.9904 175.637 88.4835 172.993 93.204C170.444 97.8301 169.17 103.542 169.17 110.339C169.17 117.137 170.444 122.896 172.993 127.616C175.637 132.242 179.083 135.735 183.331 138.096C187.674 140.362 192.395 141.494 197.493 141.494ZM321.49 71.6786V149H311.577V135.405C309.312 140.22 305.818 143.902 301.098 146.451C296.377 149 291.091 150.275 285.237 150.275C275.985 150.275 268.432 147.442 262.579 141.778C256.725 136.019 253.799 127.711 253.799 116.854V71.6786H263.57V115.721C263.57 124.123 265.647 130.543 269.801 134.98C274.05 139.417 279.809 141.636 287.078 141.636C294.536 141.636 300.484 139.276 304.922 134.555C309.359 129.835 311.577 122.896 311.577 113.738V71.6786H321.49ZM354.035 85.4152C356.206 80.6003 359.511 76.8712 363.948 74.2277C368.48 71.5842 374.003 70.2625 380.517 70.2625V80.6003H377.826C370.651 80.6003 364.892 82.5357 360.549 86.4065C356.206 90.2773 354.035 96.7444 354.035 105.808V149H344.122V71.6786H354.035V85.4152ZM390.898 110.339C390.898 102.315 392.503 95.3282 395.713 89.3804C398.923 83.3382 403.36 78.7121 409.025 75.5022C414.689 72.1979 421.156 70.5457 428.426 70.5457C437.961 70.5457 445.797 72.906 451.934 77.6264C458.165 82.3469 462.177 88.7668 463.971 96.886H453.35C452.028 91.3158 449.149 86.973 444.711 83.8575C440.368 80.6475 434.94 79.0426 428.426 79.0426C423.233 79.0426 418.56 80.2227 414.406 82.5829C410.252 84.9432 406.948 88.4835 404.493 93.204C402.133 97.8301 400.953 103.542 400.953 110.339C400.953 117.137 402.133 122.896 404.493 127.616C406.948 132.337 410.252 135.877 414.406 138.237C418.56 140.598 423.233 141.778 428.426 141.778C434.94 141.778 440.368 140.22 444.711 137.104C449.149 133.894 452.028 129.457 453.35 123.793H463.971C462.177 131.723 458.165 138.096 451.934 142.911C445.703 147.725 437.867 150.133 428.426 150.133C421.156 150.133 414.689 148.528 409.025 145.318C403.36 142.014 398.923 137.388 395.713 131.44C392.503 125.398 390.898 118.364 390.898 110.339ZM552.236 106.374C552.236 109.773 552.142 112.369 551.953 114.163H487.802C488.085 120.016 489.501 125.02 492.05 129.174C494.599 133.328 497.951 136.491 502.105 138.662C506.259 140.739 510.791 141.778 515.7 141.778C522.12 141.778 527.501 140.22 531.844 137.104C536.281 133.989 539.208 129.788 540.624 124.501H551.103C549.215 132.053 545.156 138.237 538.925 143.052C532.788 147.773 525.046 150.133 515.7 150.133C508.43 150.133 501.916 148.528 496.157 145.318C490.398 142.014 485.866 137.388 482.562 131.44C479.352 125.398 477.747 118.364 477.747 110.339C477.747 102.315 479.352 95.281 482.562 89.2388C485.772 83.1966 490.257 78.5705 496.015 75.3606C501.774 72.1507 508.336 70.5457 515.7 70.5457C523.064 70.5457 529.484 72.1507 534.959 75.3606C540.53 78.5705 544.778 82.9134 547.705 88.3891C550.726 93.7705 552.236 99.7655 552.236 106.374ZM542.182 106.091C542.276 100.332 541.096 95.4226 538.641 91.363C536.281 87.3034 533.024 84.2351 528.87 82.1581C524.716 80.0811 520.184 79.0426 515.275 79.0426C507.911 79.0426 501.633 81.4028 496.44 86.1233C491.248 90.8438 488.368 97.4996 487.802 106.091H542.182ZM607.476 90.0885H594.447V149H570.231V90.0885H561.451V69.9793H570.231V67.7134C570.231 57.9893 573.016 50.6253 578.587 45.6216C584.157 40.5235 592.323 37.9745 603.086 37.9745C604.88 37.9745 606.201 38.0217 607.051 38.1161V58.6501C602.425 58.3669 599.168 59.0278 597.28 60.6327C595.391 62.2377 594.447 65.1172 594.447 69.2712V69.9793H607.476V90.0885ZM696.884 69.9793V149H672.668V138.237C670.213 141.73 666.862 144.563 662.614 146.734C658.46 148.811 653.833 149.85 648.735 149.85C642.693 149.85 637.359 148.528 632.733 145.884C628.107 143.147 624.519 139.229 621.97 134.131C619.421 129.032 618.147 123.037 618.147 116.146V69.9793H642.221V112.888C642.221 118.175 643.59 122.282 646.328 125.209C649.066 128.136 652.748 129.599 657.374 129.599C662.094 129.599 665.823 128.136 668.561 125.209C671.299 122.282 672.668 118.175 672.668 112.888V69.9793H696.884ZM746.425 150.133C739.533 150.133 733.396 148.953 728.015 146.593C722.634 144.232 718.385 141.022 715.27 136.963C712.154 132.809 710.408 128.183 710.03 123.085H733.963C734.246 125.822 735.521 128.041 737.786 129.74C740.052 131.44 742.837 132.29 746.142 132.29C749.163 132.29 751.476 131.723 753.081 130.59C754.78 129.363 755.63 127.805 755.63 125.917C755.63 123.651 754.45 121.999 752.089 120.96C749.729 119.827 745.906 118.6 740.619 117.278C734.954 115.957 730.234 114.588 726.457 113.172C722.681 111.661 719.424 109.348 716.686 106.233C713.948 103.023 712.579 98.727 712.579 93.3456C712.579 88.814 713.806 84.7071 716.261 81.0252C718.81 77.2488 722.492 74.2749 727.307 72.1035C732.216 69.9321 738.022 68.8463 744.725 68.8463C754.638 68.8463 762.427 71.301 768.092 76.2103C773.851 81.1196 777.155 87.6338 778.005 95.7531H755.63C755.252 93.0152 754.025 90.8438 751.948 89.2388C749.965 87.6338 747.322 86.8314 744.017 86.8314C741.185 86.8314 739.014 87.3978 737.503 88.5307C735.993 89.5692 735.237 91.0326 735.237 92.9208C735.237 95.1866 736.417 96.886 738.778 98.0189C741.232 99.1518 745.009 100.285 750.107 101.418C755.96 102.928 760.728 104.439 764.41 105.949C768.092 107.365 771.302 109.726 774.04 113.03C776.872 116.24 778.335 120.583 778.43 126.058C778.43 130.685 777.108 134.839 774.464 138.521C771.915 142.108 768.186 144.94 763.277 147.017C758.462 149.094 752.845 150.133 746.425 150.133ZM867.734 108.215C867.734 110.481 867.592 112.841 867.309 115.296H812.504C812.882 120.205 814.44 123.981 817.178 126.625C820.01 129.174 823.456 130.449 827.516 130.449C833.558 130.449 837.759 127.899 840.119 122.801H865.893C864.571 127.994 862.164 132.667 858.671 136.821C855.272 140.975 850.976 144.232 845.784 146.593C840.591 148.953 834.785 150.133 828.365 150.133C820.624 150.133 813.732 148.481 807.69 145.176C801.647 141.872 796.927 137.152 793.528 131.015C790.129 124.878 788.43 117.703 788.43 109.49C788.43 101.276 790.082 94.1009 793.387 87.9643C796.785 81.8277 801.506 77.1072 807.548 73.8029C813.59 70.4985 820.529 68.8463 828.365 68.8463C836.012 68.8463 842.81 70.4513 848.758 73.6612C854.705 76.8712 859.332 81.45 862.636 87.3978C866.035 93.3456 867.734 100.285 867.734 108.215ZM842.952 101.842C842.952 97.6884 841.535 94.3841 838.703 91.9295C835.871 89.4748 832.33 88.2475 828.082 88.2475C824.022 88.2475 820.576 89.4276 817.744 91.7879C815.006 94.1481 813.307 97.4996 812.646 101.842H842.952Z" fill="currentColor"/><rect x="891.998" y="132" width="55" height="17" fill="#88CB00"/><rect x="60.1648" y="110.125" width="56.718" height="28.3657" transform="rotate(135 60.1648 110.125)" fill="#88CB00"/><rect x="60.1763" y="110.117" width="28.3657" height="56.7364" transform="rotate(135 60.1763 110.117)" fill="#88CB00"/></svg></span><span class="role-tag">Play</span></div>
+  <div class="tag">Solve out loud · The host reveals the answer</div>
+
+  <!-- JOIN -->
+  <section id="join" class="center-stack fade-in">
+    <div class="glass pad">
+      <div class="section-title">🎮 Join the game</div>
+      <div class="sub" id="joinSub">Enter your details to join the room.</div>
+      <div class="field hidden" id="codeWrap"><label class="lbl" for="roomCodeField">Room code (from the host)</label><input id="roomCodeField" type="text" placeholder="e.g. 4K2P9X" maxlength="12" autocomplete="off" style="text-transform:uppercase;letter-spacing:.12em"/></div>
+      <div class="field"><label class="lbl" for="pname">Your name</label><input id="pname" type="text" placeholder="e.g. Aanya" maxlength="18" autocomplete="off"/></div>
+      <div class="field"><label class="lbl" for="pphone">Phone number</label><input id="pphone" type="tel" placeholder="98765 43210" maxlength="15" autocomplete="off"/></div>
+      <button class="btn btn-primary btn-lg" id="joinBtn">Join room →</button>
+      <div class="conn-line"><span class="status-dot" id="statusDot"></span><span id="statusText">Looking for the room…</span></div>
+    </div>
+  </section>
+
+  <!-- WAITING -->
+  <section id="waiting" class="hidden center-stack">
+    <div class="glass pad waiting">
+      <div class="pulse-orb"></div>
+      <div class="section-title" style="justify-content:center" id="waitTitle">You're in!</div>
+      <div class="sub" style="margin-bottom:6px" id="waitSub">Waiting for the host to start the game…</div>
+      <div class="you-pill"><span class="avatar av-sm" id="youAv">?</span><span id="youName">You</span></div>
+      <div class="roster" id="roster"></div>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="pgame" class="hidden">
+    <div class="progress-meta"><span id="qIndex">Riddle 1 / 50</span><span id="scoreLead"></span></div>
+    <div class="progress"><span id="progressBar" style="width:2%"></span></div>
+    <div class="glass pad">
+      <div id="specBanner" class="spec-banner hidden">👀 You joined late — spectating this round. You'll be enrolled from the next riddle, so you won't miss out.</div>
+      <div class="ai-readout"><span class="ai-dot"></span><span id="aiReadout">SF GAME ZONE AI · incoming riddle…</span></div>
+      <div class="chips"><span class="chip cat" id="catChip">Category</span><span class="chip" id="diffChip">Difficulty</span></div>
+      <div class="riddle-q" id="riddleQ"></div>
+      <div class="seal">
+        <div id="answerEntry" class="answer-entry hidden">
+          <label class="lbl" style="margin-bottom:8px;display:block">✍️ Your answer</label>
+          <div class="type-row"><input id="guessInput" type="text" placeholder="Type your answer & submit…" maxlength="60" autocomplete="off"/><button class="btn btn-primary" id="guessBtn">Submit</button></div>
+          <div id="guessMsg" class="guess-msg"></div>
+        </div>
+        <div id="sealed" class="sealed-box"><span class="lockico">🔒</span><span class="shimmer">Answer hidden until the host reveals it…</span></div>
+        <div id="revealed" class="answer-reveal hidden"><div class="answer-label">✦ The answer is</div><div class="answer-text" id="answerText"></div></div>
+      </div>
+    </div>
+    <div class="glass pad live-score" id="liveScore"></div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="presults" class="hidden center-stack">
+    <div class="glass pad" style="text-align:center">
+      <div id="winnerBanner" class="winner-banner"></div>
+      <div class="section-title" style="justify-content:center">🏆 Final standings</div>
+      <div class="podium" id="podium"></div>
+      <div class="rest-list" id="restList"></div>
+    </div>
+  </section>
+
+  <!-- DISCONNECTED / ERROR -->
+  <section id="lost" class="hidden center-stack">
+    <div class="glass pad banner">
+      <div class="section-title" style="justify-content:center">⚠️ <span id="lostTitle">Connection lost</span></div>
+      <div class="sub" id="lostMsg" style="margin-bottom:18px">Trying to reconnect to the host…</div>
+      <button class="btn btn-primary" id="retryBtn">Reconnect</button>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ===== SF Game Zone · Player app (display-only; holds NO answers) ===== */
+const $=s=>document.querySelector(s);
+const initials=n=>(n||"?").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase()||"?";
+const esc=s=>(s||"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let roomId=(location.hash||"").replace(/^#/,"").trim();
+const CIDKEY="sfgz_cid",NAMEKEY="sfgz_name",PHONEKEY="sfgz_phone";
+const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+function uuid(){return "c-"+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);}
+let myCid=ls.get(CIDKEY)||uuid(); ls.set(CIDKEY,myCid);
+const me={name:ls.get(NAMEKEY)||"", phone:ls.get(PHONEKEY)||"", cid:myCid};
+let peer=null, conn=null, joined=false, pendingApproval=false, lastPhase=null, lastIdx=-1, lastRevealed=false, solvedThisRiddle=false;
+
+function setStatus(cls,txt){ $("#statusDot").className="status-dot "+cls; $("#statusText").textContent=txt; }
+function show(id){["join","waiting","pgame","presults","lost"].forEach(s=>$("#"+s).classList.toggle("hidden",s!==id));$("#"+id).classList.add("fade-in");window.scrollTo({top:0,behavior:"smooth"});}
+
+if(!roomId){
+  // opened without a share link — let the player type the host's room code
+  $("#codeWrap").classList.remove("hidden");
+  $("#joinSub").textContent="Enter the room code your host is showing, plus your details.";
+  setStatus("","Enter the room code + your details");
+}else{
+  setStatus("","Tap Join to connect to the room");
+}
+// prefill / welcome-back for returning players
+if(me.name) $("#pname").value=me.name;
+if(me.phone) $("#pphone").value=me.phone;
+if(me.name && roomId){ $("#joinSub").textContent="Welcome back, "+me.name+" — tap Join to rejoin and restore your score."; $("#joinBtn").textContent="Rejoin →"; }
+
+/* ---------- connect ---------- */
+function connect(){
+  peer=new Peer({debug:1});
+  peer.on("open", ()=>{
+    conn=peer.connect(roomId,{reliable:true});
+    wireConn();
+  });
+  peer.on("error", err=>{
+    if(err.type==="peer-unavailable"){ setStatus("err","Host not found — is their app open?"); showLost("Host unavailable","The host's room isn't open right now. Ask them to open the Host app, then reconnect."); }
+    else setStatus("err","Network error");
+    console.warn(err);
+  });
+  peer.on("disconnected", ()=>{ try{peer.reconnect();}catch(e){} });
+}
+function wireConn(){
+  conn.on("open", ()=>{
+    setStatus("live","Connected to the room");
+    sendJoin();
+  });
+  conn.on("data", render);
+  conn.on("close", ()=>{ showLost("Connection lost","You were disconnected from the host. Reconnect to jump back in."); });
+}
+function sendJoin(){ try{ conn.send({type:"join", clientId:me.cid, name:me.name, phone:me.phone}); }catch(e){} }
+
+$("#joinBtn").addEventListener("click", ()=>{
+  const n=$("#pname").value.trim(), p=$("#pphone").value.trim();
+  if(!roomId){
+    const code=$("#roomCodeField").value.trim().toLowerCase().replace(/[^a-z0-9]/g,"");
+    if(!code){flash($("#roomCodeField"));return;}
+    roomId="sfgz-"+code;
+  }
+  if(!n){flash($("#pname"));return;}
+  if(p.replace(/\D/g,"").length<5){flash($("#pphone"));return;}
+  me.name=n; me.phone=p; joined=true; ls.set(NAMEKEY,n); ls.set(PHONEKEY,p);
+  $("#youName").textContent=n; $("#youAv").textContent=initials(n); $("#youAv").style.background="linear-gradient(135deg,#5a5a5a,#9aa0a6)";
+  show("waiting");
+  if(!peer) connect(); else if(conn&&conn.open) sendJoin();
+});
+function flash(el){el.style.borderColor="var(--magenta)";el.style.boxShadow="0 0 0 3px rgba(255,93,108,.22)";setTimeout(()=>{el.style.borderColor="";el.style.boxShadow="";},900);}
+$("#pphone").addEventListener("keydown",e=>{if(e.key==="Enter")$("#joinBtn").click();});
+
+$("#retryBtn").addEventListener("click", ()=>{
+  show(joined?"waiting":"join");
+  try{ if(peer)peer.destroy(); }catch(e){}
+  peer=null; conn=null; connect();
+});
+function showLost(title,msg){ $("#lostTitle").textContent=title; $("#lostMsg").textContent=msg; show("lost"); }
+
+/* ---------- submit a typed answer ---------- */
+function submitGuess(){
+  const v=$("#guessInput").value.trim();
+  if(!v || solvedThisRiddle) return;
+  if(conn && conn.open){ try{ conn.send({type:"answer", clientId:me.cid, text:v}); }catch(e){} $("#guessMsg").textContent="Checking…"; $("#guessMsg").className="guess-msg"; }
+  else { $("#guessMsg").textContent="Not connected — reconnecting…"; $("#guessMsg").className="guess-msg no"; }
+}
+$("#guessBtn").addEventListener("click", submitGuess);
+$("#guessInput").addEventListener("keydown", e=>{ if(e.key==="Enter") submitGuess(); });
+
+/* ---------- render pushed state ---------- */
+function render(st){
+  if(!st) return;
+  if(st.type==="answerResult"){
+    if(st.correct){ solvedThisRiddle=true; $("#guessInput").disabled=true; $("#guessBtn").disabled=true; $("#guessInput").value=""; $("#guessInput").placeholder="Solved ✓"; $("#guessMsg").textContent="✓ Correct! +"+(st.points||0)+" points — nice one!"; $("#guessMsg").className="guess-msg ok"; burst(); }
+    else if(st.spectator){ $("#guessMsg").textContent="You're spectating this round — you'll play from the next riddle."; $("#guessMsg").className="guess-msg no"; }
+    else if(st.locked){ $("#guessMsg").textContent="The host already revealed this one."; $("#guessMsg").className="guess-msg no"; }
+    else { $("#guessMsg").textContent="Not quite — try again!"; $("#guessMsg").className="guess-msg no"; $("#guessBtn").disabled=false; $("#guessInput").disabled=false; }
+    return;
+  }
+  if(st.type==="rejected"){ handleRejected(st.reason); return; }
+  if(st.type==="pending"){ pendingApproval=true; $("#waitTitle").textContent="Knock knock…"; $("#waitSub").textContent="Waiting for the host to let you in…"; setStatus("live","Waiting for host approval"); show("waiting"); return; }
+  if(st.type!=="state") return;
+  pendingApproval=false;
+  if(st.phase==="lobby"){ $("#waitTitle").textContent="You're in!"; $("#waitSub").textContent="Waiting for the host to start the game…"; renderRoster(st.scores); if(joined) show("waiting"); }
+  else if(st.phase==="playing"){ renderGame(st); }
+  else if(st.phase==="results"){ renderResults(st.results||st.scores); }
+  lastPhase=st.phase;
+}
+function handleRejected(reason){
+  const map={ full:["Room is full","The host's room has hit its capacity. Try again shortly."],
+              denied:["Not admitted","The host declined the join request."],
+              closed:["Room closed","The host closed or regenerated this room. Ask them for a fresh link."] };
+  const m=map[reason]||["Can't join right now","The host isn't accepting joins at the moment."];
+  joined=false; showLost(m[0],m[1]);
+}
+function renderRoster(scores){
+  $("#roster").innerHTML=(scores||[]).map(p=>`<div class="rchip"><span class="avatar av-sm" style="background:${p.palette||'linear-gradient(135deg,#88CB00,#B6E62E)'}">${initials(p.name)}</span>${esc(p.name)}</div>`).join("");
+}
+function renderGame(st){
+  const newQ = (st.idx!==lastIdx);
+  show("pgame");
+  const arr=st.scores||[];
+  const mine=arr.find(p=>p.cid===me.cid);
+  if(mine) me.name=mine.name;
+  // spectator notice for late joiners
+  const sb=$("#specBanner");
+  if(mine && mine.status==='spectator'){ sb.classList.remove("hidden"); }
+  else sb.classList.add("hidden");
+
+  $("#qIndex").textContent=`Riddle ${(st.idx||0)+1} / ${st.total||"?"}`;
+  $("#progressBar").style.width=(((st.idx||0)/(st.total||1))*100+2)+"%";
+  $("#catChip").textContent=st.cat||"—";
+  const dc=$("#diffChip"); dc.textContent=(st.diff||"")+(st.pts?` · ${st.pts} pts`:""); dc.className="chip diff-"+(st.diff||"Easy");
+  if(newQ){
+    typeQ(st.q||""); $("#aiReadout").textContent="SF GAME ZONE AI · your team is solving…";
+    solvedThisRiddle=false;
+    const gi=$("#guessInput"); if(gi){ gi.disabled=false; gi.value=""; gi.placeholder="Type your answer & submit…"; }
+    $("#guessBtn").disabled=false; $("#guessMsg").textContent=""; $("#guessMsg").className="guess-msg";
+  }
+  // visibility: answer box (active), sealed (spectator), revealed (after host reveal)
+  const active = mine && mine.status==='active';
+  const ae=$("#answerEntry"), sealed=$("#sealed"), rev=$("#revealed");
+  if(st.revealed && st.answer){
+    ae.classList.add("hidden"); sealed.classList.add("hidden"); rev.classList.remove("hidden");
+    $("#answerText").textContent=st.answer;
+    if(!lastRevealed || newQ){ rev.style.animation="none"; void rev.offsetWidth; rev.style.animation=""; burst(); }
+    $("#aiReadout").textContent="SF GAME ZONE AI · answer revealed ✦";
+  }else{
+    rev.classList.add("hidden");
+    if(active){ ae.classList.remove("hidden"); sealed.classList.add("hidden"); }
+    else { ae.classList.add("hidden"); sealed.classList.remove("hidden"); }
+  }
+  // scores
+  $("#scoreLead").textContent = arr[0]&&arr[0].score>0? `Leader: ${arr[0].name} · ${arr[0].score}`:"";
+  $("#liveScore").innerHTML=`<div class="section-title" style="font-size:15px;margin-bottom:10px">📊 Live scores</div>`+
+    (arr.length? arr.map(p=>`<div class="row ${p.cid===me.cid?'me':''}"><div class="avatar av-sm" style="background:${p.palette||'#5a5a5a'}">${initials(p.name)}</div><span>${esc(p.name)}${p.cid===me.cid?' (you)':''}${p.status==='spectator'?' <span class="mini-badge">spectating</span>':''}</span><span class="pts">${p.score}</span></div>`).join("") : `<div style="color:var(--faint);font-size:14px">No scores yet.</div>`);
+  lastIdx=st.idx; lastRevealed=!!st.revealed;
+}
+let typingTimer=null;
+function typeQ(q){
+  const el=$("#riddleQ"); el.innerHTML=""; clearInterval(typingTimer);
+  let i=0; const cur=document.createElement("span"); cur.style.cssText="display:inline-block;width:3px;height:1.05em;background:var(--cyan);margin-left:2px;vertical-align:text-bottom;animation:blink .8s steps(1) infinite"; el.appendChild(cur);
+  typingTimer=setInterval(()=>{ if(i<q.length){cur.insertAdjacentText("beforebegin",q[i]);i++;} else {clearInterval(typingTimer);cur.remove();} },16);
+}
+function renderResults(scores){
+  show("presults");
+  const ranked=(scores||[]).slice().sort((a,b)=>b.score-a.score);
+  const wb=$("#winnerBanner");
+  if(ranked.length && ranked[0].score>0){
+    const win=ranked[0], isMe=win.cid===me.cid;
+    wb.innerHTML=`<div class="lead">🎉 Champion 🎉</div><div class="winner-name">${esc(win.name)}</div><div class="winner-sub">${win.score} points${isMe?" — that's you! 🏆":""}</div>`;
+  } else { wb.innerHTML=`<div class="lead">Game over</div><div class="winner-name" style="font-size:34px">No points scored</div>`; }
+  const medals=["b1","b2","b3"], order=[1,0,2], top=ranked.slice(0,3), podium=$("#podium"); podium.innerHTML="";
+  order.forEach((pos,vi)=>{ if(!top[pos])return; const p=top[pos]; const d=document.createElement("div"); d.className="stand"; d.style.animationDelay=(vi*.12)+"s";
+    d.innerHTML=`${pos===0?'<div class="crown">👑</div>':''}<div class="avatar av" style="background:${p.palette||'#5a5a5a'}">${initials(p.name)}</div><div style="text-align:center"><div style="font-weight:600">${esc(p.name)}${p.cid===me.cid?' (you)':''}</div><div style="color:var(--muted);font-size:13px">${p.score} pts</div></div><div class="bar ${medals[pos]}">${pos+1}</div>`; podium.appendChild(d); });
+  $("#restList").innerHTML=ranked.slice(3).map((p,i)=>`<div class="rest-row"><span style="color:var(--faint);width:24px">#${i+4}</span><div class="avatar av-sm" style="background:${p.palette||'#5a5a5a'}">${initials(p.name)}</div><span>${esc(p.name)}${p.cid===me.cid?' (you)':''}</span><span class="pts">${p.score}</span></div>`).join("");
+  setTimeout(burst,300);
+}
+function burst(){const c=["#ffffff","#cfd2d6","#9aa0a6","#7BD93A","#ffd36b"];for(let i=0;i<46;i++){const d=document.createElement("div");d.className="confetti";d.style.left=Math.random()*100+"vw";d.style.background=c[i%c.length];document.body.appendChild(d);d.animate([{transform:"translateY(0) rotate(0)",opacity:1},{transform:`translateY(${60+Math.random()*40}vh) rotate(${360+Math.random()*360}deg)`,opacity:0}],{duration:1400+Math.random()*1100,easing:"cubic-bezier(.2,.6,.4,1)"}).onfinish=()=>d.remove();}}
+</script>
+</body>
+</html>
